@@ -1,4 +1,5 @@
 #include "Display_ST7701.h"  
+#include "esp_err.h"
       
 spi_device_handle_t SPI_handle = NULL;     
 esp_lcd_panel_handle_t panel_handle = NULL;            
@@ -322,6 +323,16 @@ void ST7701_Init()
   ST7701_WriteCommand(0x29);     
 
   ST7701_CS_Dis();
+
+  // The SD card reuses GPIO1 and GPIO2 for its command and clock lines.
+  // ST7701 commands are complete, so release SPI2 before SD_MMC claims them.
+  if (SPI_handle != NULL) {
+    const esp_err_t remove_result = spi_bus_remove_device(SPI_handle);
+    SPI_handle = NULL;
+    const esp_err_t free_result = spi_bus_free(SPI2_HOST);
+    printf("[lcd] released SPI2 for SDMMC (device=%s bus=%s)\r\n",
+           esp_err_to_name(remove_result), esp_err_to_name(free_result));
+  }
 
   //  RGB
   esp_lcd_rgb_panel_config_t rgb_config = {

@@ -21,10 +21,15 @@ void SD_Init() {
     return;
   }
   SD_D3_EN();
-  if (SD_MMC.begin("/sdcard", true)) {                              
+  // SD clock and command pins are shared with the LCD command interface.
+  // Use 1-bit mode at a conservative playback clock.
+  printf("[sd] mounting 1-bit at 10000 kHz (CLK=%d CMD=%d D0=%d)\r\n",
+         SD_CLK_PIN, SD_CMD_PIN, SD_D0_PIN);
+  if (SD_MMC.begin("/sdcard", true, false, 10000)) {
     printf("SD card initialization successful!\r\n");
   } else {
     printf("SD card initialization failed!\r\n");
+    return;
   }
   uint8_t cardType = SD_MMC.cardType();
   if(cardType == CARD_NONE){
@@ -42,12 +47,9 @@ void SD_Init() {
     } else {
       printf("UNKNOWN\r\n");
     }
-    uint64_t totalBytes = SD_MMC.totalBytes();
-    uint64_t usedBytes = SD_MMC.usedBytes();
-    SDCard_Size = totalBytes/(1024*1024);
-    printf("Total space: %llu\n", totalBytes);
-    printf("Used space: %llu\n", usedBytes);
-    printf("Free space: %llu\n", totalBytes - usedBytes);
+    const uint64_t cardBytes = SD_MMC.cardSize();
+    SDCard_Size = cardBytes / (1024 * 1024);
+    printf("SD card capacity: %llu bytes\r\n", cardBytes);
   }
 }
 bool File_Search(const char* directory, const char* fileName)    
